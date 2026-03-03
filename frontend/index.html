@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Traffic Sign Recognition Dashboard — Real-time detection and classification of traffic signs using AI">
+    <title>Traffic Sign Recognition Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-brand">
+            <div class="logo">🚦</div>
+            <div>
+                <h1>Traffic Sign Recognition</h1>
+                <p class="subtitle">AI-Powered Detection & Classification</p>
+            </div>
+        </div>
+        <div class="header-status">
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" role="tablist">
+        <button class="tab-btn active" data-tab="upload" role="tab" aria-selected="true" id="tab-upload">
+            <span class="tab-icon">📸</span> Image Upload
+        </button>
+        <button class="tab-btn" data-tab="video" role="tab" aria-selected="false" id="tab-video">
+            <span class="tab-icon">🎬</span> Video Analysis
+        </button>
+        <button class="tab-btn" data-tab="camera" role="tab" aria-selected="false" id="tab-camera">
+            <span class="tab-icon">📷</span> Live Camera
+        </button>
+        <button class="tab-btn" data-tab="logs" role="tab" aria-selected="false" id="tab-logs">
+            <span class="tab-icon">📊</span> Inspection Logs
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Image Upload Tab -->
+        <section class="tab-panel active" id="panel-upload" role="tabpanel">
+            <div class="panel-grid">
+                <div class="card upload-card">
+                    <h2>Upload Traffic Sign Image</h2>
+                    <div class="dropzone" id="dropzone">
+                        <div class="dropzone-content">
+                            <span class="dropzone-icon">📤</span>
+                            <p>Drag & drop an image here</p>
+                            <p class="dropzone-sub">or click to browse</p>
+                            <input type="file" id="fileInput" accept="image/*" hidden>
+                        </div>
+                    </div>
+                    <div class="preview-area" id="previewArea" style="display:none;">
+                        <img id="previewImage" alt="Uploaded traffic sign preview">
+                        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+                    </div>
+                    <button class="btn btn-primary" id="predictBtn" disabled>
+                        <span class="btn-icon">🔍</span> Analyze Image
+                    </button>
+                </div>
+
+                <div class="card results-card">
+                    <h2>Detection Results</h2>
+                    <div class="results-placeholder" id="resultsPlaceholder">
+                        <span class="placeholder-icon">🔮</span>
+                        <p>Upload an image to see predictions</p>
+                    </div>
+                    <div class="results-content" id="resultsContent" style="display:none;">
+                        <div class="inference-time" id="inferenceTime"></div>
+                        <div class="detections-list" id="detectionsList"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Analysis Tab -->
+        <section class="tab-panel" id="panel-video" role="tabpanel">
+            <div class="panel-grid">
+                <div class="card">
+                    <h2>Upload Video</h2>
+                    <div class="dropzone" id="videoDropzone">
+                        <div class="dropzone-content">
+                            <span class="dropzone-icon">🎬</span>
+                            <p>Drag & drop a video file</p>
+                            <p class="dropzone-sub">MP4, AVI, MOV supported</p>
+                            <input type="file" id="videoFileInput" accept="video/*" hidden>
+                        </div>
+                    </div>
+                    <div class="video-controls">
+                        <label>
+                            Frame skip:
+                            <input type="number" id="frameSkip" value="3" min="1" max="30" class="input-small">
+                        </label>
+                        <label>
+                            Max frames:
+                            <input type="number" id="maxFrames" value="300" min="10" max="1000" class="input-small">
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" id="analyzeVideoBtn" disabled>
+                        <span class="btn-icon">▶️</span> Analyze Video
+                    </button>
+                    <div class="progress-bar" id="videoProgress" style="display:none;">
+                        <div class="progress-fill" id="videoProgressFill"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Video Results</h2>
+                    <div class="results-placeholder" id="videoResultsPlaceholder">
+                        <span class="placeholder-icon">🎞️</span>
+                        <p>Upload a video to see frame-by-frame results</p>
+                    </div>
+                    <div class="video-results" id="videoResultsContent" style="display:none;">
+                        <div class="video-stats" id="videoStats"></div>
+                        <div class="frame-timeline" id="frameTimeline"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Camera Tab -->
+        <section class="tab-panel" id="panel-camera" role="tabpanel">
+            <div class="camera-layout">
+                <div class="card camera-card">
+                    <h2>Webcam Feed</h2>
+                    <div class="camera-container">
+                        <video id="cameraVideo" autoplay playsinline></video>
+                        <canvas id="cameraCanvas"></canvas>
+                        <div class="camera-overlay" id="cameraOverlay">
+                            <span class="placeholder-icon">📷</span>
+                            <p>Camera preview will appear here</p>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="btn btn-primary" id="startCameraBtn">
+                            <span class="btn-icon">▶️</span> Start Camera
+                        </button>
+                        <button class="btn btn-danger" id="stopCameraBtn" disabled>
+                            <span class="btn-icon">⏹️</span> Stop
+                        </button>
+                        <div class="camera-fps" id="cameraFps">— FPS</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Live Detections</h2>
+                    <div class="live-detections" id="liveDetections">
+                        <p class="text-muted">Start the camera to see live detections</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inspection Logs Tab -->
+        <section class="tab-panel" id="panel-logs" role="tabpanel">
+            <div class="card logs-card">
+                <div class="logs-header">
+                    <h2>Inspection Logs</h2>
+                    <div class="logs-filters">
+                        <input type="text" id="filterLabel" placeholder="Search by label..." class="input-filter">
+                        <input type="number" id="filterMinConf" placeholder="Min confidence" min="0" max="1" step="0.1" class="input-filter input-small">
+                        <input type="number" id="filterMaxConf" placeholder="Max confidence" min="0" max="1" step="0.1" class="input-filter input-small">
+                        <select id="filterSource" class="input-filter">
+                            <option value="">All sources</option>
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                            <option value="webcam">Webcam</option>
+                        </select>
+                        <input type="date" id="filterDateFrom" class="input-filter">
+                        <input type="date" id="filterDateTo" class="input-filter">
+                        <button class="btn btn-secondary" id="applyFiltersBtn">
+                            <span class="btn-icon">🔍</span> Filter
+                        </button>
+                        <button class="btn btn-ghost" id="clearFiltersBtn">Clear</button>
+                    </div>
+                </div>
+                <div class="logs-table-container">
+                    <table class="logs-table" id="logsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Image</th>
+                                <th>Predicted Label</th>
+                                <th>Confidence</th>
+                                <th>Source</th>
+                                <th>Latency</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            <tr><td colspan="7" class="text-center text-muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="logs-pagination">
+                    <button class="btn btn-ghost" id="prevPageBtn" disabled>← Previous</button>
+                    <span class="pagination-info" id="paginationInfo">Page 1 of 1</span>
+                    <button class="btn btn-ghost" id="nextPageBtn" disabled>Next →</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
