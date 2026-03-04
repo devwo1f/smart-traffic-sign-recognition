@@ -28,7 +28,7 @@ for d in [DATA_DIR, RAW_DIR, PROCESSED_DIR, CROPPED_DIR, YOLO_DIR, NEW_LABELS_DI
 # ============================================================================
 # Dataset Configuration
 # ============================================================================
-NUM_WORKERS = min(8, os.cpu_count() or 1)
+NUM_WORKERS = min(2, os.cpu_count() or 1)  # Reduced to ease GPU memory pressure on Windows
 TRAIN_SPLIT = 0.70
 VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
@@ -44,12 +44,12 @@ SPLIT_MANIFEST_FILE = PROCESSED_DIR / "split_manifest.csv"
 # EfficientNet Classifier Configuration
 # ============================================================================
 CLASSIFIER_IMG_SIZE = 224
-CLASSIFIER_BATCH_SIZE = 128  # Tuned for RTX 4060 8GB VRAM
-CLASSIFIER_LR = 2e-3  # Scaled with batch size (linear scaling rule)
+CLASSIFIER_BATCH_SIZE = 64  # Max safe batch size for B3 on RTX 4060 8GB
+CLASSIFIER_LR = 1e-3  # Scaled with batch size (linear scaling rule)
 CLASSIFIER_WEIGHT_DECAY = 1e-4
 CLASSIFIER_EPOCHS = 50
 CLASSIFIER_PATIENCE = 10  # Early stopping patience
-CLASSIFIER_BACKBONE = "efficientnet_b0"  # Options: efficientnet_b0, b1, b2, b3
+CLASSIFIER_BACKBONE = "efficientnet_b3"  # Higher accuracy, needs careful VRAM management
 CLASSIFIER_FREEZE_EPOCHS = 5  # Freeze backbone for first N epochs
 NUM_CLASSES = None  # Determined dynamically from dataset
 
@@ -101,9 +101,9 @@ USE_AMP = True  # Mixed precision training (FP16 on CUDA)
 DEVICE = "cuda"  # Will fallback to cpu if not available
 GRADIENT_CLIP_VALUE = 1.0
 USE_COMPILE = False  # torch.compile requires Triton (Linux-only)
-CUDNN_BENCHMARK = True  # Auto-tune cuDNN kernels (fixed input sizes)
-PERSISTENT_WORKERS = True  # Keep DataLoader workers alive between epochs
-PREFETCH_FACTOR = 4  # Prefetch batches per worker
+CUDNN_BENCHMARK = True  # Re-enabled — small VRAM cost but significant speedup for fixed input sizes
+PERSISTENT_WORKERS = False  # Disabled — can cause hangs on Windows
+PREFETCH_FACTOR = 2  # Default prefetch
 
 
 # ============================================================================
