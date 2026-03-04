@@ -11,7 +11,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch.cuda.amp import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 from tqdm import tqdm
 
 import config
@@ -41,7 +41,7 @@ def train_one_epoch(
         optimizer.zero_grad(set_to_none=True)
 
         if config.USE_AMP and device.type == "cuda":
-            with autocast():
+            with autocast('cuda'):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
             scaler.scale(loss).backward()
@@ -86,7 +86,7 @@ def validate(
         labels = labels.to(device, non_blocking=True)
 
         if config.USE_AMP and device.type == "cuda":
-            with autocast():
+            with autocast('cuda'):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
         else:
@@ -125,7 +125,11 @@ def train(resume_from: str | None = None) -> dict:
     print(f"🖥️  Device: {device}")
     if device.type == "cuda":
         print(f"   GPU: {torch.cuda.get_device_name(0)}")
-        print(f"   VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f} GB")
+        print(f"   VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+        # Enable cuDNN auto-tuner for fixed input sizes
+        if config.CUDNN_BENCHMARK:
+            torch.backends.cudnn.benchmark = True
+            print("   cuDNN benchmark: enabled")
 
     # Data
     print("\n📂 Loading data...")
@@ -145,6 +149,11 @@ def train(resume_from: str | None = None) -> dict:
         print(f"   Resuming from epoch {start_epoch}")
 
     model = model.to(device)
+
+    # torch.compile for kernel fusion (PyTorch 2.x)
+    if config.USE_COMPILE and hasattr(torch, "compile"):
+        print("⚡ Compiling model with torch.compile...")
+        model = torch.compile(model)
 
     # Freeze backbone initially
     if start_epoch < config.CLASSIFIER_FREEZE_EPOCHS:

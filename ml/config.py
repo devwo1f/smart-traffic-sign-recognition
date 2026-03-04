@@ -28,7 +28,7 @@ for d in [DATA_DIR, RAW_DIR, PROCESSED_DIR, CROPPED_DIR, YOLO_DIR, NEW_LABELS_DI
 # ============================================================================
 # Dataset Configuration
 # ============================================================================
-NUM_WORKERS = min(4, os.cpu_count() or 1)
+NUM_WORKERS = min(8, os.cpu_count() or 1)
 TRAIN_SPLIT = 0.70
 VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
@@ -44,8 +44,8 @@ SPLIT_MANIFEST_FILE = PROCESSED_DIR / "split_manifest.csv"
 # EfficientNet Classifier Configuration
 # ============================================================================
 CLASSIFIER_IMG_SIZE = 224
-CLASSIFIER_BATCH_SIZE = 64
-CLASSIFIER_LR = 1e-3
+CLASSIFIER_BATCH_SIZE = 128  # Tuned for RTX 4060 8GB VRAM
+CLASSIFIER_LR = 2e-3  # Scaled with batch size (linear scaling rule)
 CLASSIFIER_WEIGHT_DECAY = 1e-4
 CLASSIFIER_EPOCHS = 50
 CLASSIFIER_PATIENCE = 10  # Early stopping patience
@@ -97,9 +97,13 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 # ============================================================================
 # Training Configuration
 # ============================================================================
-USE_AMP = True  # Mixed precision training
+USE_AMP = True  # Mixed precision training (FP16 on CUDA)
 DEVICE = "cuda"  # Will fallback to cpu if not available
 GRADIENT_CLIP_VALUE = 1.0
+USE_COMPILE = False  # torch.compile requires Triton (Linux-only)
+CUDNN_BENCHMARK = True  # Auto-tune cuDNN kernels (fixed input sizes)
+PERSISTENT_WORKERS = True  # Keep DataLoader workers alive between epochs
+PREFETCH_FACTOR = 4  # Prefetch batches per worker
 
 
 # ============================================================================

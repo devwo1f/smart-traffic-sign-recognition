@@ -127,22 +127,28 @@ def get_data_loaders(
     """Create train, val, test DataLoaders."""
     bs = batch_size or config.CLASSIFIER_BATCH_SIZE
     nw = num_workers or config.NUM_WORKERS
+    persistent = config.PERSISTENT_WORKERS and nw > 0
+    prefetch = config.PREFETCH_FACTOR if nw > 0 else None
 
     train_ds = TrafficSignDataset("train")
     val_ds = TrafficSignDataset("val")
     test_ds = TrafficSignDataset("test")
 
+    loader_kwargs = dict(
+        num_workers=nw,
+        pin_memory=True,
+        persistent_workers=persistent,
+        prefetch_factor=prefetch,
+    )
+
     train_loader = torch.utils.data.DataLoader(
-        train_ds, batch_size=bs, shuffle=True, num_workers=nw,
-        pin_memory=True, drop_last=True,
+        train_ds, batch_size=bs, shuffle=True, drop_last=True, **loader_kwargs,
     )
     val_loader = torch.utils.data.DataLoader(
-        val_ds, batch_size=bs, shuffle=False, num_workers=nw,
-        pin_memory=True,
+        val_ds, batch_size=bs, shuffle=False, **loader_kwargs,
     )
     test_loader = torch.utils.data.DataLoader(
-        test_ds, batch_size=bs, shuffle=False, num_workers=nw,
-        pin_memory=True,
+        test_ds, batch_size=bs, shuffle=False, **loader_kwargs,
     )
 
     return train_loader, val_loader, test_loader
