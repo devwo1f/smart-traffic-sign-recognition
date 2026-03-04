@@ -28,7 +28,7 @@ for d in [DATA_DIR, RAW_DIR, PROCESSED_DIR, CROPPED_DIR, YOLO_DIR, NEW_LABELS_DI
 # ============================================================================
 # Dataset Configuration
 # ============================================================================
-NUM_WORKERS = min(2, os.cpu_count() or 1)  # Reduced to ease GPU memory pressure on Windows
+NUM_WORKERS = min(6, os.cpu_count() or 1)  # Data loading uses CPU RAM, not GPU VRAM — safe to increase
 TRAIN_SPLIT = 0.70
 VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
@@ -103,8 +103,8 @@ GRADIENT_CLIP_VALUE = 1.0
 GRADIENT_ACCUMULATION_STEPS = 2  # Effective batch = 64 * 2 = 128 without extra VRAM
 USE_COMPILE = False  # torch.compile requires Triton (Linux-only)
 CUDNN_BENCHMARK = True  # Re-enabled — small VRAM cost but significant speedup for fixed input sizes
-PERSISTENT_WORKERS = False  # Disabled — can cause hangs on Windows
-PREFETCH_FACTOR = 2  # Default prefetch
+PERSISTENT_WORKERS = True  # Keep workers alive between epochs (saves respawn overhead)
+PREFETCH_FACTOR = 4  # Pre-load more batches to keep GPU fed
 
 
 # ============================================================================
