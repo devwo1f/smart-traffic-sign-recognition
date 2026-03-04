@@ -27,41 +27,49 @@ def train_one_epoch(
     scaler: GradScaler,
     device: torch.device,
 ) -> tuple[float, float]:
-    """Train for one epoch. Returns (avg_loss, accuracy)."""
+    """Train for one epoch with gradient accumulation. Returns (avg_loss, accuracy)."""
     model.train()
     total_loss = 0.0
     correct = 0
     total = 0
+    accum_steps = config.GRADIENT_ACCUMULATION_STEPS
+
+    optimizer.zero_grad(set_to_none=True)
 
     pbar = tqdm(loader, desc="  Training", leave=False)
-    for images, labels in pbar:
+    for step, (images, labels) in enumerate(pbar):
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
-
-        optimizer.zero_grad(set_to_none=True)
 
         if config.USE_AMP and device.type == "cuda":
             with autocast('cuda'):
                 outputs = model(images)
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels) / accum_steps
             scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRADIENT_CLIP_VALUE)
-            scaler.step(optimizer)
-            scaler.update()
         else:
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            loss = criterion(outputs, labels) / accum_steps
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRADIENT_CLIP_VALUE)
-            optimizer.step()
 
-        total_loss += loss.item() * images.size(0)
+        # Un-scale loss for logging (multiply back by accum_steps)
+        total_loss += loss.item() * accum_steps * images.size(0)
         _, predicted = outputs.max(1)
         correct += predicted.eq(labels).sum().item()
         total += labels.size(0)
 
-        pbar.set_postfix(loss=f"{loss.item():.4f}", acc=f"{100.0 * correct / total:.1f}%")
+        # Step optimizer every accum_steps, or on the last batch
+        if (step + 1) % accum_steps == 0 or (step + 1) == len(loader):
+            if config.USE_AMP and device.type == "cuda":
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRADIENT_CLIP_VALUE)
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRADIENT_CLIP_VALUE)
+                optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+
+        pbar.set_postfix(loss=f"{loss.item() * accum_steps:.4f}", acc=f"{100.0 * correct / total:.1f}%")
 
     avg_loss = total_loss / total
     accuracy = correct / total

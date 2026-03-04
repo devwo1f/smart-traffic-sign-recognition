@@ -100,6 +100,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 USE_AMP = True  # Mixed precision training (FP16 on CUDA)
 DEVICE = "cuda"  # Will fallback to cpu if not available
 GRADIENT_CLIP_VALUE = 1.0
+GRADIENT_ACCUMULATION_STEPS = 2  # Effective batch = 64 * 2 = 128 without extra VRAM
 USE_COMPILE = False  # torch.compile requires Triton (Linux-only)
 CUDNN_BENCHMARK = True  # Re-enabled — small VRAM cost but significant speedup for fixed input sizes
 PERSISTENT_WORKERS = False  # Disabled — can cause hangs on Windows
