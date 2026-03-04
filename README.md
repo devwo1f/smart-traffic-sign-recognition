@@ -223,6 +223,82 @@ git push -u origin dev
 
 ---
 
+## 📜 History of Implementation
+
+### V1 — Baseline EfficientNet-B3 (March 2026)
+
+#### Results
+
+| Metric | Score |
+|---|---|
+| **Test Accuracy** | **72.84%** |
+| **Weighted Precision** | 85.77% |
+| **Weighted Recall** | 72.84% |
+| **Weighted F1** | 74.86% |
+| **Classes** | 368 |
+| **Dataset** | Mapillary MTSD (143K train / 30K val / 31K test) |
+| **Total Training Time** | ~7 hours (50 epochs) |
+
+Best checkpoint saved at epoch 44 with 71.97% validation accuracy.
+
+**Top performing classes:** `bicycles-only`, `divided-highway-ends`, `pedestrians-crossing` — all achieved 100% F1.
+
+**Challenging classes:** Visually similar signs like `no-parking-or-no-stopping`, `interstate-route`, and rare classes with few samples struggled (~15% F1).
+
+#### GPU & CPU Optimization Journey
+
+Training runs on an **NVIDIA RTX 4060 Laptop GPU (8GB VRAM)**. The original configuration caused a system crash at 100% GPU utilization. Below is how we iteratively optimized the pipeline:
+
+**Problem:** Batch size 256 + EfficientNet-B3 exceeded 8GB VRAM, causing the system to crash.
+
+**Step 1 — Reduce VRAM pressure (prevent crashes):**
+
+| Setting | Before | After | Rationale |
+|---|---|---|---|
+| Batch size | 256 | 64 | 4× less VRAM per forward pass |
+| Learning rate | 4e-3 | 1e-3 | Scaled proportionally with batch size (linear scaling rule) |
+
+**Step 2 — Recover effective batch size with gradient accumulation:**
+
+Rather than increasing batch size (risky on 8GB), we simulate batch 128 by accumulating gradients over 2 micro-batches of 64. This gives identical training dynamics without the VRAM spike.
+
+```
+GRADIENT_ACCUMULATION_STEPS = 2  # Effective batch = 64 × 2 = 128
+```
+
+The training loop divides the loss by `accum_steps` and only calls `optimizer.step()` every 2 batches, so gradient magnitudes remain equivalent to a true batch-128 run.
+
+**Step 3 — Maximize data throughput (CPU-side):**
+
+The initial training speed was only **5.3 it/s** — the GPU was starved waiting for data. Data loading uses CPU RAM (not GPU VRAM), so these changes are safe:
+
+| Setting | Before | After | Impact |
+|---|---|---|---|
+| Data workers | 2 | 6 | 3× more parallel data loading threads |
+| Prefetch factor | 2 | 4 | Pre-loads more batches so GPU never waits |
+| Persistent workers | `False` | `True` | Workers stay alive between epochs (no respawn overhead) |
+| cuDNN benchmark | `False` | `True` | Auto-tunes CUDA kernels for fixed 224×224 input |
+
+**Result:** Training speed improved from **5.3 → 10.4 it/s** (~2× faster).
+
+**Final configuration summary:**
+
+```python
+CLASSIFIER_BACKBONE = "efficientnet_b3"    # 11.6M params
+CLASSIFIER_BATCH_SIZE = 64                 # In-VRAM batch (safe for 8GB)
+GRADIENT_ACCUMULATION_STEPS = 2            # Effective batch = 128
+CLASSIFIER_LR = 1e-3                       # Scaled to effective batch
+USE_AMP = True                             # FP16 mixed precision
+CUDNN_BENCHMARK = True                     # Kernel auto-tuning
+NUM_WORKERS = 6                            # Parallel data loading
+PREFETCH_FACTOR = 4                        # Pre-loaded batches
+PERSISTENT_WORKERS = True                  # No worker respawn
+```
+
+**Estimated VRAM usage:** ~5–6 GB out of 8 GB available — stable with no crashes.
+
+---
+
 ## 📜 License
 
 MIT License — see [LICENSE](LICENSE) for details.
