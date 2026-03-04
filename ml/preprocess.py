@@ -19,7 +19,12 @@ import config
 
 
 def load_annotations(anno_dir: Path) -> list[dict]:
-    """Load all MTSD annotation JSON files."""
+    """Load all MTSD annotation JSON files.
+
+    In MTSD v2, each JSON file is named after the image key (e.g., abc123.json
+    corresponds to abc123.jpg). We inject the filename stem as '_filename_key'
+    so downstream code can map annotations back to images.
+    """
     annotations = []
     json_files = list(anno_dir.rglob("*.json"))
 
@@ -33,8 +38,13 @@ def load_annotations(anno_dir: Path) -> list[dict]:
             try:
                 data = json.load(f)
                 if isinstance(data, dict):
+                    # Inject filename stem as fallback image key (MTSD v2 format)
+                    data["_filename_key"] = json_file.stem
                     annotations.append(data)
                 elif isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict):
+                            item["_filename_key"] = json_file.stem
                     annotations.extend(data)
             except json.JSONDecodeError:
                 print(f"  ⚠️  Skipping invalid JSON: {json_file.name}")
@@ -69,7 +79,9 @@ def extract_sign_regions(annotations: list[dict], image_dirs: list[Path]) -> lis
 
     sign_regions = []
     for anno in tqdm(annotations, desc="Extracting sign regions"):
-        image_key = anno.get("key", anno.get("image_key", ""))
+        # MTSD v2: image key is the annotation filename, not a top-level field.
+        # Fall back through: top-level "key" → "image_key" → filename stem.
+        image_key = anno.get("key", anno.get("image_key", anno.get("_filename_key", "")))
         objects = anno.get("objects", [])
 
         if not objects or image_key not in image_map:
@@ -267,11 +279,17 @@ def main() -> None:
     print("=" * 60)
     print()
 
-    # Find extracted data
+    # Find extracted data — check both raw/extracted/ and raw/ directly
     extract_dir = config.RAW_DIR / "extracted"
     if not extract_dir.exists():
-        print("❌ No extracted data found. Run 'python download_dataset.py' first.")
-        return
+        # Also accept data placed directly in raw/
+        anno_check = list(config.RAW_DIR.rglob("*.json"))
+        if anno_check:
+            extract_dir = config.RAW_DIR
+            print(f"📂 Using dataset from: {extract_dir.resolve()}")
+        else:
+            print("❌ No extracted data found. Run 'python download_dataset.py' first.")
+            return
 
     # Find annotation files
     anno_candidates = [
