@@ -9,8 +9,9 @@ A production-grade traffic sign recognition system using **YOLOv8** (detection) 
 
 ---
 
-##Video Demo
-https://github.com/user-attachments/assets/48d0e9ff-57f5-4079-9d5d-8bf8ffafe098
+## Video Demo
+
+<video src="https://github.com/user-attachments/assets/48d0e9ff-57f5-4079-9d5d-8bf8ffafe098" controls="controls" muted="muted"></video>
 
 ---
 ## 🏗️ Architecture
