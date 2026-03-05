@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/traffic_signs"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./traffic_signs.db"
 
     # Model paths
     MODEL_PATH: str = "../ml/models"
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     MAX_BATCH_SIZE: int = 32
 
     # Upload
-    MAX_UPLOAD_SIZE_MB: int = 50
+    MAX_UPLOAD_SIZE_MB: int = 500
     UPLOAD_DIR: str = "uploads"
 
     # Retraining

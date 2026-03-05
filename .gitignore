@@ -24,6 +24,7 @@ ml/data/
 ml/models/
 ml/runs/
 ml/benchmark_results.json
+*.zip
 !ml/models/.gitkeep
 
 # Node

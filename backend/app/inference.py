@@ -75,7 +75,7 @@ class InferenceEngine:
     def _get_providers(self) -> list[str]:
         """Get available ONNX Runtime providers."""
         available = ort.get_available_providers()
-        preferred = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        preferred = ["DmlExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
         return [p for p in preferred if p in available]
 
     def predict_image(self, image_bytes: bytes) -> tuple[list[dict], float]:
@@ -234,7 +234,9 @@ class InferenceEngine:
         if len(output.shape) == 3:
             output = output[0]  # Remove batch dim
 
-        # Transpose if needed (YOLOv8 exports as [num_features, num_detections])
+        # Standard YOLOv8 ONNX output shape: [1, 4 + num_classes, 8400]
+        # We want to iterate over the 8400 detections.
+        # So we transpose to [8400, 4 + num_classes]
         if output.shape[0] < output.shape[1]:
             output = output.T
 
@@ -243,10 +245,10 @@ class InferenceEngine:
         scale_y = orig_h / 640.0
 
         for det in output:
-            if len(det) < 5:
-                continue
-
-            x_center, y_center, w, h = det[:4]
+            # det is a 1D array of size (4 + num_classes)
+            # The first 4 elements are the bounding box [x_center, y_center, width, height]
+            x_center, y_center, w, h = det[0:4]
+            # The rest are class scores
             class_scores = det[4:]
 
             max_score = float(np.max(class_scores))

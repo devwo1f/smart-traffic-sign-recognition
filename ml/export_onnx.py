@@ -40,6 +40,7 @@ def export_classifier_to_onnx() -> str:
             "input": {0: "batch_size"},
             "output": {0: "batch_size"},
         },
+        dynamo=False,  # Use legacy exporter to embed weights inline (TensorRT compatible)
     )
 
     # Validate ONNX model

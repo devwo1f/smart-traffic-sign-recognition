@@ -62,10 +62,10 @@ CLASSIFIER_TRT = MODELS_DIR / "classifier.engine"
 # ============================================================================
 # YOLOv8 Detector Configuration
 # ============================================================================
-YOLO_IMG_SIZE = 640
-YOLO_BATCH_SIZE = 16
+YOLO_IMG_SIZE = 1280
+YOLO_BATCH_SIZE = 8  # Reduced to prevent GPU hogging on RTX 4060 8GB
 YOLO_EPOCHS = 100
-YOLO_MODEL = "yolov8n.pt"  # Options: yolov8n.pt, yolov8s.pt
+YOLO_MODEL = "yolov8x.pt"  # Options: yolov8n.pt, yolov8s.pt, yolov8x.pt
 YOLO_DATA_YAML = YOLO_DIR / "data.yaml"
 
 # YOLO model paths
